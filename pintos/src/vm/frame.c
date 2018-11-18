@@ -84,7 +84,7 @@ evict_page_from_frame()
   save_evicted_page(cleared_frame_table_entry);
 
   cleared_frame_table_entry->owner_thread_tid = thread_current()->tid;
-  cleared_frame_table_entry->page_ptr->NULL;
+  cleared_frame_table_entry->page_ptr = NULL;
 
   lock_release(&frame_table_lock);
 
