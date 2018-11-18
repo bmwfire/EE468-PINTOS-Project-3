@@ -2,15 +2,21 @@
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "lib/kernel/list.h"
 
 
-static void * frame_evict();
+static void * evict_page_from_frame();
 static void add_frame_table_entry(void * new_frame_ptr);
+static struct frame_table_entry * next_frame_table_entry_to_clear();
+static void save_evicted_page(struct frame_table_entry * next_fte_to_clear);
+
+static struct lock vm_lock;
 
 void
 vm_frame_table_init()
 {
+  lock_init(&frame_table_lock);
   list_init(&frame_table);
 }
 
@@ -34,13 +40,13 @@ frame vm_get_frame(enum palloc_flags flags)
   /* on success add frame to frame table */
   if (new_frame_ptr != NULL)
   {
-
+    add_frame_table_entry(new_frame_ptr);
   } else
   {
     /* Evict a page from a frame */
-    new_frame_ptr = frame_evict();
+    new_frame_ptr = evict_page_from_frame();
     /* frame is already in frame table and its contents were updated in
-    frame_evict()*/
+    evict_page_from_frame()*/
   }
 
   return new_frame_ptr;
@@ -58,5 +64,75 @@ add_frame_table_entry(void * new_frame_ptr)
   new_frame_table_entry->frame_ptr = new_frame_ptr;
   new_frame_table_entry->owner_thread_tid = thread_current()->tid;
 
-  list_push_front(&frame_table, &new_frame_table_entry->elem);
+  /* acquire lock to modify frame table */
+  lock_aquire(&frame_table_lock);
+  list_push_back(&frame_table, &new_frame_table_entry->elem);
+  lock_release(&frame_table_lock);
+}
+
+/* Evict a page from a frame to make room for a new page */
+static void *
+evict_page_from_frame()
+{
+  struct frame_table_entry * cleared_frame_table_entry;
+
+  lock_aquire(&frame_table_lock);
+
+  cleared_frame_table_entry = next_frame_table_entry_to_clear();
+  save_evicted_page(cleared_frame_table_entry);
+
+  cleared_frame_table_entry->owner_thread_tid = thread_current()->tid;
+  cleared_frame_table_entry->page_ptr->NULL;
+
+  lock_release(&frame_table_lock);
+
+  return cleared_frame_table_entry;
+}
+
+/* return the next frame table entry to clear */
+static struct frame_table_entry *
+next_frame_table_entry_to_clear()
+{
+  struct frame_table_entry * next_fte_to_clear = NULL;
+  struct frame_table_entry * temp_frame_table_entry;
+  struct list_elem * fte_list_elem;
+  struct thread *temp_thread;
+  /* search through frame table till a page with accessed bit is found to be 0 */
+  fte_list_elem = list_head(&frame_table);
+  while((fte_list_elem = list_next(fte_list_elem)) != list_tail (&frame_table))
+  {
+    temp_frame_table_entry = list_entry(fte_list_elem,
+      struct frame_table_entry, elem);
+    temp_thread = thread_get_by_id(temp_frame_table_entry->owner_thread_tid);
+    if(!pagedir_is_accessed(temp_thread->pagedir,
+      temp_frame_table_entry->page_ptr))
+    {
+      /* found a page with access bit 0 */
+      next_fte_to_clear = temp_frame_table_entry;
+      /* maintain that the youngest frame is in the back of the list */
+      list_remove(fte_list_elem);
+      list_push_back(fte_list_elem);
+      break;
+    } else
+    {
+      /* also clear accessed bits while we are here */
+      pagedir_set_accessed(temp_thread->pagedir,
+        temp_frame_table_entry->page_ptr, false);
+    }
+  }
+
+  if(next_fte_to_clear == NULL)
+  {
+    /* no bits had a 0 access bit, just clear the oldest one */
+    next_fte_to_clear = list_entry(list_begin(&frame_table));
+  }
+
+  return next_fte_to_clear;
+}
+
+/* save page that is being evicted and add to the swap table */
+void
+save_evicted_page(struct frame_table_entry * next_fte_to_clear)
+{
+  // TODO
 }
