@@ -4,12 +4,13 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "lib/kernel/list.h"
+#include "userprog/pagedir.h"
 #include "vm/frame.h"
 
 
-static void * evict_page_from_frame();
+static void * evict_page_from_frame(void);
 static void add_frame_table_entry(void * new_frame_ptr);
-static struct frame_table_entry * next_frame_table_entry_to_clear();
+static struct frame_table_entry * next_frame_table_entry_to_clear(void);
 static void save_evicted_page(struct frame_table_entry * next_fte_to_clear);
 
 static struct lock frame_table_lock;
@@ -28,7 +29,7 @@ Note that this is method is call vm_get_frame since Pintos maps kernel virtual
 memory directly to physical memory, i.e. the kernel page adress is the same as
 the physical frame address. */
 void *
-frame vm_get_frame(enum palloc_flags flags)
+vm_get_frame(enum palloc_flags flags)
 {
   void *new_frame_ptr = NULL;
 
@@ -66,7 +67,7 @@ add_frame_table_entry(void * new_frame_ptr)
   new_frame_table_entry->owner_thread_tid = thread_current()->tid;
 
   /* acquire lock to modify frame table */
-  lock_aquire(&frame_table_lock);
+  lock_acquire(&frame_table_lock);
   list_push_back(&frame_table, &new_frame_table_entry->elem);
   lock_release(&frame_table_lock);
 }
@@ -77,7 +78,7 @@ evict_page_from_frame()
 {
   struct frame_table_entry * cleared_frame_table_entry;
 
-  lock_aquire(&frame_table_lock);
+  lock_acquire(&frame_table_lock);
 
   cleared_frame_table_entry = next_frame_table_entry_to_clear();
   save_evicted_page(cleared_frame_table_entry);
@@ -112,7 +113,7 @@ next_frame_table_entry_to_clear()
       next_fte_to_clear = temp_frame_table_entry;
       /* maintain that the youngest frame is in the back of the list */
       list_remove(fte_list_elem);
-      list_push_back(fte_list_elem);
+      list_push_back(&frame_table, fte_list_elem);
       break;
     } else
     {
@@ -125,7 +126,8 @@ next_frame_table_entry_to_clear()
   if(next_fte_to_clear == NULL)
   {
     /* no bits had a 0 access bit, just clear the oldest one */
-    next_fte_to_clear = list_entry(list_begin(&frame_table));
+    next_fte_to_clear = list_entry(list_begin(&frame_table),
+                                    struct frame_table_entry, elem);
   }
 
   ASSERT(next_fte_to_clear != NULL);
