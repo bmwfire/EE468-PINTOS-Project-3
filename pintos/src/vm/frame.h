@@ -12,6 +12,6 @@ struct frame_table_entry {
 struct list frame_table; // the frame table
 
 /* functions in frame.c */
-void *frame vm_get_frame(enum palloc_flags flags);
+void * vm_get_frame(enum palloc_flags flags);
 void vm_free_frame(void *frame);
 void vm_frame_table_init();
