@@ -28,7 +28,7 @@ void vm_free_frame(void *frame)
   struct list_elem * fte_list_elem;
 
   /* remove the entry from the frame table and free allocated memory */
-  lock_acquire(frame_table_lock);
+  lock_acquire(&frame_table_lock);
   fte_list_elem = list_head(&frame_table);
   while((fte_list_elem = list_next(fte_list_elem)) != list_tail(&frame_table))
   {
@@ -42,7 +42,7 @@ void vm_free_frame(void *frame)
       break;
     }
   }
-  lock_release(frame_table_lock);
+  lock_release(&frame_table_lock);
 
   /* free the actual frame */
   palloc_free_page(frame);
