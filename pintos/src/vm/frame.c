@@ -127,6 +127,8 @@ next_frame_table_entry_to_clear()
     next_fte_to_clear = list_entry(list_begin(&frame_table));
   }
 
+  ASSERT(next_fte_to_clear != NULL);
+
   return next_fte_to_clear;
 }
 
