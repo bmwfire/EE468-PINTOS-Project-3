@@ -22,6 +22,33 @@ vm_frame_table_init()
   list_init(&frame_table);
 }
 
+void vm_free_frame(void *frame)
+{
+  struct frame_table_entry * temp_frame_table_entry;
+  struct list_elem * fte_list_elem;
+
+  /* remove the entry from the frame table and free allocated memory */
+  lock_acquire(frame_table_lock);
+  fte_list_elem = list_head(&frame_table);
+  while((fte_list_elem = list_next(fte_list_elem)) != list_tail(&frame_table))
+  {
+    temp_frame_table_entry = list_entry(fte_list_elem, struct
+                                        frame_table_entry, elem);
+    if(temp_frame_table_entry->frame_ptr == frame)
+    {
+      list_remove(fte_list_elem);
+      /* free the memory for frame table entry struct */
+      free(temp_frame_table_entry);
+      break;
+    }
+  }
+  lock_release(frame_table_lock);
+
+  /* free the actual frame */
+  palloc_free_page(frame);
+}
+
+
 /* allocate a page from USER_POOL and add the new entry to the frame table.
 Pintos Doc: The frames used for user pages should be obtained from the
 “user pool,” by calling palloc_get_page(PAL_USER).
