@@ -4,6 +4,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "lib/kernel/list.h"
+#include "vm/frame.h"
 
 
 static void * evict_page_from_frame();
@@ -11,7 +12,7 @@ static void add_frame_table_entry(void * new_frame_ptr);
 static struct frame_table_entry * next_frame_table_entry_to_clear();
 static void save_evicted_page(struct frame_table_entry * next_fte_to_clear);
 
-static struct lock vm_lock;
+static struct lock frame_table_lock;
 
 void
 vm_frame_table_init()
