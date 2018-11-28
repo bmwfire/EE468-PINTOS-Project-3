@@ -13,7 +13,7 @@ static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
-void sys_exit(int exit_status);
+void exit(int exit_status);
 
 /* Exit with status (-1) for an invalid address */
 //static void exit(int);
@@ -163,15 +163,15 @@ page_fault (struct intr_frame *f)
   //check if access was valid in the first replace. close all proceses that have invalid accesses to free resources
   //also check if there is even any data to be read
   if (!not_present){
-    sys_exit(-1);
+    exit(-1);
   }
 
   if (fault_addr == NULL){
-    sys_exit (-1);
+    exit (-1);
   }
 
   if(!is_user_vaddr(fault_addr)){
-    sys_exit (-1);
+    exit (-1);
   }
 
   spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
@@ -180,7 +180,7 @@ page_fault (struct intr_frame *f)
   }//NOTE this is where stack growth may need to be implemented
   else{
     if (!pagedir_get_page (curr->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
-	     sys_exit (-1);//exit if it didn't
+	     exit (-1);//exit if it didn't
     }
   }
 
@@ -201,7 +201,7 @@ page_fault (struct intr_frame *f)
   kill (f);
 }
 
-void sys_exit(int exit_status) {
+void exit(int exit_status) {
   struct child_status *child_status;
   struct thread *curr = thread_current();
   struct thread *parent_thread = thread_get_by_id(curr->parent_tid);
