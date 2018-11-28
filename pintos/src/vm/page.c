@@ -14,6 +14,12 @@ struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
 bool load_page(struct sup_page_entry *spe);
 bool load_file_page(struct sup_page_entry *spe);
 
+static void free_sp(struct hash *spe);
+static void free_sp_entry(struct hash_elem *he, void *aux UNUSED);
+
+unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED);
+bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, void *aux UNUSED);
+
 void vm_page_init (){
   return;
 }
@@ -79,4 +85,25 @@ static void free_sp_entry(struct hash_elem *he, void *aux UNUSED){
 
   //NOTE: might need swap stuff here
   free(spe);
+}
+
+
+/* needed since sp is a hash*/
+unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
+{
+  const struct suppl_pte *vspte;
+  vspte = hash_entry (he, struct suppl_pte, elem);
+  return hash_bytes (&vspte->uvaddr, sizeof vspte->uvaddr);
+}
+
+/* needed since sp is a hash*/
+bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, void *aux UNUSED)
+{
+  const struct suppl_pte *vsptea;
+  const struct suppl_pte *vspteb;
+
+  vsptea = hash_entry (hea, struct suppl_pte, elem);
+  vspteb = hash_entry (heb, struct suppl_pte, elem);
+
+  return (vsptea->uvaddr - vspteb->uvaddr) < 0;
 }
