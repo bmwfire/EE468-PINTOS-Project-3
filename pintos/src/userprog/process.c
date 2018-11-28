@@ -249,6 +249,8 @@ process_exit (void)
   // list_remove(elem);
   // free(child);
 
+  free_sp(&cur->suppl_page_table);
+
   // close the files that are opened by the current thread
   close_thread_files(cur->tid);
 
