@@ -74,7 +74,7 @@ bool load_file_page(struct sup_page_entry *spe){
 }
 
 //free supplemntal page table
-static void free_sp(struct hash *spe){
+void free_sp(struct hash *spe){
   hash_destroy(spe, free_sp_entry);
 }
 
