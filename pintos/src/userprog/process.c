@@ -89,6 +89,10 @@ start_process (void *cmdline_)
   bool success;
   struct thread *parent_thread;
 
+
+  /* init supplemental hash page table */
+  hash_init (&cur->suppl_page_table, suppl_pt_hash, suppl_pt_less, NULL);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
