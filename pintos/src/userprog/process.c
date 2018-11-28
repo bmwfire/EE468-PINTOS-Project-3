@@ -88,10 +88,10 @@ start_process (void *cmdline_)
   struct intr_frame if_;
   bool success;
   struct thread *parent_thread;
-
+  struct thread *curr = thread_current();
 
   /* init supplemental hash page table */
-  hash_init (&cur->suppl_page_table, suppl_pt_hash, suppl_pt_less, NULL);
+  hash_init (&curr->suppl_page_table, suppl_pt_hash, suppl_pt_less, NULL);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
