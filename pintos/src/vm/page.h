@@ -26,3 +26,12 @@ struct sup_page_entry{
 
   struct hash_elem elem;
 };
+
+void vm_page_init(void);
+
+
+unsigned suppl_pt_hash (const struct hash_elem *, void * UNUSED);
+bool suppl_pt_less (const struct hash_elem *, const struct hash_elem *, void * UNUSED);
+
+static void free_sp(struct hash *);
+bool load_page(struct sup_page_entry *);
