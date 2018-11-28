@@ -1,3 +1,6 @@
+#ifndef VM_PAGEH
+#define VM_PAGEH
+
 #include <stdio.h>
 #include "threads/thread.h"
 #include "threads/palloc.h"
@@ -35,3 +38,5 @@ bool suppl_pt_less (const struct hash_elem *, const struct hash_elem *, void * U
 
 static void free_sp(struct hash *);
 bool load_page(struct sup_page_entry *);
+
+#endif
