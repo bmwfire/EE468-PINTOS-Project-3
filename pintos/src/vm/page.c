@@ -13,7 +13,7 @@ struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
 bool load_page(struct sup_page_entry *spe);
 bool load_file_page(struct sup_page_entry *spe);
 
-static void free_sp(struct hash *spe);
+void free_sp(struct hash *spe);
 static void free_sp_entry(struct hash_elem *he, void *aux UNUSED);
 
 unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED);
