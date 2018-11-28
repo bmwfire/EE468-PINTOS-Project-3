@@ -131,6 +131,9 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
+  sup_page_entry *spe;//initialize supplemental page table entry
+  struct thread *curr = thread_current();//acquire current thread
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -151,6 +154,34 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+
+  //begin page stuff
+
+  //check if access was valid in the first replace. close all proceses that have invalid accesses to free resources
+  //also check if there is even any data to be read
+  if (!not_present){
+    exit(-1);
+  }
+
+  if (fault_addr == NULL){
+    exit (-1);
+  }
+
+  if(!is_user_vaddr(fault_addr)){
+    exit (-1);
+  }
+
+  spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
+  if(spe != NULL && !spe->loaded){
+    load_page(spe);
+  }//NOTE this is where stack growth may need to be implemented
+  else{
+    if (!pagedir_get_page (cur->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
+	     exit (-1);//exit if it didn't
+    }
+  }
+
+  //end page stuff
 
   /* Exit the process if invalid pointer */
   // if(!is_valid_ptr(fault_addr))

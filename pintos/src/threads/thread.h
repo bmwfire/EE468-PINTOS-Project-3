@@ -115,6 +115,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 
+    struct hash suppl_page_table;//supplemental page table
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
