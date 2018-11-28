@@ -91,19 +91,19 @@ static void free_sp_entry(struct hash_elem *he, void *aux UNUSED){
 /* needed since sp is a hash*/
 unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
 {
-  const struct suppl_pte *vspte;
-  vspte = hash_entry (he, struct suppl_pte, elem);
+  const struct sup_page_entry *vspte;
+  vspte = hash_entry (he, struct sup_page_entry, elem);
   return hash_bytes (&vspte->uvaddr, sizeof vspte->uvaddr);
 }
 
 /* needed since sp is a hash*/
 bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, void *aux UNUSED)
 {
-  const struct suppl_pte *vsptea;
-  const struct suppl_pte *vspteb;
+  const struct sup_page_entry *vsptea;
+  const struct sup_page_entry *vspteb;
 
-  vsptea = hash_entry (hea, struct suppl_pte, elem);
-  vspteb = hash_entry (heb, struct suppl_pte, elem);
+  vsptea = hash_entry (hea, struct sup_page_entry, elem);
+  vspteb = hash_entry (heb, struct sup_page_entry, elem);
 
   return (vsptea->uvaddr - vspteb->uvaddr) < 0;
 }

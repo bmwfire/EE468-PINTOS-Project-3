@@ -5,6 +5,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -176,7 +178,7 @@ page_fault (struct intr_frame *f)
     load_page(spe);
   }//NOTE this is where stack growth may need to be implemented
   else{
-    if (!pagedir_get_page (cur->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
+    if (!pagedir_get_page (curr->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
 	     exit (-1);//exit if it didn't
     }
   }
