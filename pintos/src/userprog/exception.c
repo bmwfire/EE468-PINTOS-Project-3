@@ -7,6 +7,7 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/page.h"
+#include "userprog/syscall.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -162,15 +163,15 @@ page_fault (struct intr_frame *f)
   //check if access was valid in the first replace. close all proceses that have invalid accesses to free resources
   //also check if there is even any data to be read
   if (!not_present){
-    exit(-1);
+    sys_exit(-1);
   }
 
   if (fault_addr == NULL){
-    exit (-1);
+    sys_exit (-1);
   }
 
   if(!is_user_vaddr(fault_addr)){
-    exit (-1);
+    sys_exit (-1);
   }
 
   spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
@@ -179,7 +180,7 @@ page_fault (struct intr_frame *f)
   }//NOTE this is where stack growth may need to be implemented
   else{
     if (!pagedir_get_page (curr->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
-	     exit (-1);//exit if it didn't
+	     sys_exit (-1);//exit if it didn't
     }
   }
 
