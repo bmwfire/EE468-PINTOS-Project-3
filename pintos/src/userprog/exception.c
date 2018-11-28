@@ -133,7 +133,7 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
-  sup_page_entry *spe;//initialize supplemental page table entry
+  struct sup_page_entry *spe;//initialize supplemental page table entry
   struct thread *curr = thread_current();//acquire current thread
 
   /* Obtain faulting address, the virtual address that was
