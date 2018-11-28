@@ -5,8 +5,8 @@
 #include "filesys/file.h"
 
 enum spe_type{
-  SWAP = 1;
-  FILE = 2;
+  SWAP = 1,
+  FILE = 2,
   //MMF = 3;
 };
 
