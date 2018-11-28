@@ -7,13 +7,13 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/page.h"
-#include "userprog/syscall.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+void sys_exit(int exit_status);
 
 /* Exit with status (-1) for an invalid address */
 //static void exit(int);
@@ -199,4 +199,44 @@ page_fault (struct intr_frame *f)
           write ? "writing" : "reading",
           user ? "user" : "kernel");
   kill (f);
+}
+
+void sys_exit(int exit_status) {
+  struct child_status *child_status;
+  struct thread *curr = thread_current();
+  struct thread *parent_thread = thread_get_by_id(curr->parent_tid);
+
+  printf ("%s: exit(%d)\n", curr->name, exit_status);
+
+  if (parent_thread != NULL)
+   {
+     // iterate through parent's child list to find current thread's entry
+     // to update its status
+     struct list_elem *elem = list_head(&parent_thread->children);
+
+     //first check the head
+     child_status = list_entry(elem, struct child_status, elem_child_status);
+     if (child_status->child_tid == curr->tid)
+     {
+       lock_acquire(&parent_thread->child_lock);
+       child_status->exited = true;
+       child_status->child_exit_status = exit_status;
+       lock_release(&parent_thread->child_lock);
+     }
+
+     //and check the whole list too
+     while((elem = list_next(elem)) != list_tail(&parent_thread->children))
+     {
+       child_status = list_entry(elem, struct child_status, elem_child_status);
+       if (child_status->child_tid == curr->tid)
+       {
+         lock_acquire(&parent_thread->child_lock);
+         child_status->exited = true;
+         child_status->child_exit_status = exit_status;
+         lock_release(&parent_thread->child_lock);
+       }
+     }
+   }
+
+  thread_exit();
 }

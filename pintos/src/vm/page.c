@@ -7,7 +7,6 @@
 #include "filesys/file.h"
 #include "string.h"
 #include "userprog/syscall.h"
-#include "vm/swap.h"
 
 void vm_page_init ();
 struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
