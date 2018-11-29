@@ -8,7 +8,7 @@
 #include "string.h"
 #include "userprog/syscall.h"
 
-void vm_page_init ();
+void vm_page_init (void);
 struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
 bool load_page(struct sup_page_entry *spe);
 bool load_file_page(struct sup_page_entry *spe);
@@ -19,7 +19,7 @@ static void free_sp_entry(struct hash_elem *he, void *aux UNUSED);
 unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED);
 bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, void *aux UNUSED);
 
-void vm_page_init (){
+void vm_page_init (void){
   return;
 }
 
