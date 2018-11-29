@@ -33,7 +33,7 @@ struct sup_page_entry * get_spe(struct hash *h, void * user_vaddr){
   if(he != NULL){
     return hash_entry(he, struct sup_page_entry, elem);
   }
-  return NULL
+  return NULL;
 }
 
 //load page NOTE this may need to be changed to account for mmf and swapping
@@ -80,7 +80,7 @@ void free_sp(struct hash *spe){
 
 static void free_sp_entry(struct hash_elem *he, void *aux UNUSED){
   struct sup_page_entry *spe;
-  spe = hash_entry (e, struct sup_page_entry, elem);
+  spe = hash_entry (he, struct sup_page_entry, elem);
 
   //NOTE: might need swap stuff here
   free(spe);
@@ -92,7 +92,7 @@ unsigned suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
 {
   const struct sup_page_entry *vspte;
   vspte = hash_entry (he, struct sup_page_entry, elem);
-  return hash_bytes (&vspte->uvaddr, sizeof vspte->uvaddr);
+  return hash_bytes (&vspte->user_vaddr, sizeof vspte->user_vaddr);
 }
 
 /* needed since sp is a hash*/
@@ -104,5 +104,5 @@ bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, vo
   vsptea = hash_entry (hea, struct sup_page_entry, elem);
   vspteb = hash_entry (heb, struct sup_page_entry, elem);
 
-  return (vsptea->uvaddr - vspteb->uvaddr) < 0;
+  return (vsptea->user_vaddr - vspteb->user_vaddr) < 0;
 }
