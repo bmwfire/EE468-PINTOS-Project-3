@@ -39,8 +39,9 @@ struct sup_page_entry * get_spe(struct hash *h, void * user_vaddr){
 //load page NOTE this may need to be changed to account for mmf and swapping
 bool load_page(struct sup_page_entry *spe){
   if(spe->type == FILE){
-    load_file_page(spe);
+    return load_file_page(spe);
   }
+  return false;
 }
 
 //load a page that is type file. return success
