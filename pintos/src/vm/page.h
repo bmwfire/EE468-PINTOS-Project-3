@@ -18,6 +18,7 @@ struct spe_data{
   off_t offset; //file offset
   uint32_t read_bytes;
   uint32_t zero_bytes;
+  bool writable;
   //!TODO complete this
 };
 
