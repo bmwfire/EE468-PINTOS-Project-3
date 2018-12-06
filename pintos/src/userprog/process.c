@@ -21,6 +21,7 @@
 #include "threads/malloc.h"
 #include "lib/user/syscall.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -88,6 +89,10 @@ start_process (void *cmdline_)
   struct intr_frame if_;
   bool success;
   struct thread *parent_thread;
+  struct thread *curr = thread_current();
+
+  /* init supplemental hash page table */
+  hash_init (&curr->suppl_page_table, suppl_pt_hash, suppl_pt_less, NULL);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -244,6 +249,8 @@ process_exit (void)
   // child = list_entry(elem, struct child_status, elem_child_status);
   // list_remove(elem);
   // free(child);
+
+  free_sp(&cur->suppl_page_table);
 
   // close the files that are opened by the current thread
   close_thread_files(cur->tid);

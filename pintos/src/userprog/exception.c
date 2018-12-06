@@ -5,12 +5,15 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+void exit(int exit_status);
 
 /* Exit with status (-1) for an invalid address */
 //static void exit(int);
@@ -131,6 +134,9 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
+  struct sup_page_entry *spe;//initialize supplemental page table entry
+  struct thread *curr = thread_current();//acquire current thread
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -152,6 +158,34 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+  //begin page stuff
+
+  //check if access was valid in the first replace. close all proceses that have invalid accesses to free resources
+  //also check if there is even any data to be read
+  if (!not_present){
+    exit(-1);
+  }
+
+  if (fault_addr == NULL){
+    exit (-1);
+  }
+
+  if(!is_user_vaddr(fault_addr)){
+    exit (-1);
+  }
+
+  spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
+  if(spe != NULL && !spe->loaded){
+    load_page(spe);
+  }//NOTE this is where stack growth may need to be implemented
+  else{
+    if (!pagedir_get_page (curr->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
+	     exit (-1);//exit if it didn't
+    }
+  }
+
+  //end page stuff
+
   /* Exit the process if invalid pointer */
   // if(!is_valid_ptr(fault_addr))
   //   exit(-1);
@@ -165,4 +199,44 @@ page_fault (struct intr_frame *f)
           write ? "writing" : "reading",
           user ? "user" : "kernel");
   kill (f);
+}
+
+void exit(int exit_status) {
+  struct child_status *child_status;
+  struct thread *curr = thread_current();
+  struct thread *parent_thread = thread_get_by_id(curr->parent_tid);
+
+  printf ("%s: exit(%d)\n", curr->name, exit_status);
+
+  if (parent_thread != NULL)
+   {
+     // iterate through parent's child list to find current thread's entry
+     // to update its status
+     struct list_elem *elem = list_head(&parent_thread->children);
+
+     //first check the head
+     child_status = list_entry(elem, struct child_status, elem_child_status);
+     if (child_status->child_tid == curr->tid)
+     {
+       lock_acquire(&parent_thread->child_lock);
+       child_status->exited = true;
+       child_status->child_exit_status = exit_status;
+       lock_release(&parent_thread->child_lock);
+     }
+
+     //and check the whole list too
+     while((elem = list_next(elem)) != list_tail(&parent_thread->children))
+     {
+       child_status = list_entry(elem, struct child_status, elem_child_status);
+       if (child_status->child_tid == curr->tid)
+       {
+         lock_acquire(&parent_thread->child_lock);
+         child_status->exited = true;
+         child_status->child_exit_status = exit_status;
+         lock_release(&parent_thread->child_lock);
+       }
+     }
+   }
+
+  thread_exit();
 }
