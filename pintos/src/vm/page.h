@@ -28,16 +28,19 @@ union spe_data{
   struct
   {
     struct file * file;
-    off_t ofs;
-    unit32_t read_bytes;
+    off_t offset;
+    uit32_t read_bytes;
   } mmf_page;
 };
 
 struct sup_page_entry{
   void *user_vaddr;
   enum spe_type type;
-  struct spe_data data;
+  union spe_data data;
   bool loaded;
+
+  size_t swap_slot_idx;
+  bool swap_writable;
 
   struct hash_elem elem;
 };
