@@ -49,7 +49,7 @@ bool load_page(struct sup_page_entry *spe){
   switch (spe->type)
   {
   case FILE:
-    success = load_page_file (spe);
+    success = load_file_page (spe);
     break;
   case MMF:
   case MMF | SWAP:
