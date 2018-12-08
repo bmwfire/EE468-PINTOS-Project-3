@@ -8,12 +8,12 @@
 typedef int pid_t;
 
 /* States of a file that has been loaded to be run by a process. */
-enum load_status
-  {
-    NOT_LOADED,         /* Initial loading state. */
-    LOAD_SUCCESS,       /* The file was loaded successfully with no issues. */
-    LOAD_FAILED         /* The file failed to load. */
-  };
+//enum load_status
+//  {
+//    NOT_LOADED,         /* Initial loading state. */
+//    LOAD_SUCCESS,       /* The file was loaded successfully with no issues. */
+//    LOAD_FAILED         /* The file failed to load. */
+//  };
 
 /* A structure storing infomation about a child process. */
 //struct process
