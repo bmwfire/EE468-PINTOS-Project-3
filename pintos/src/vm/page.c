@@ -133,3 +133,31 @@ void grow_stack (void *uvaddr)
     }
   }
 }
+
+/* Add an file suplemental page entry to supplemental page table */
+bool
+suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
+                     uint32_t read_bytes)
+{
+  struct suppl_pte *spte;
+  struct hash_elem *result;
+  struct thread *cur = thread_current ();
+
+  spte = calloc (1, sizeof *spte);
+
+  if (spte == NULL)
+    return false;
+
+  spte->user_vaddr = upage;
+  spte->type = MMF;
+  spte->data.mmf_page.file = file;
+  spte->data.mmf_page.offset = ofs;
+  spte->data.mmf_page.read_bytes = read_bytes;
+  spte->loaded = false;
+
+  result = hash_insert (&cur->suppl_page_table, &spte->elem);
+  if (result != NULL)
+    return false;
+
+  return true;
+}

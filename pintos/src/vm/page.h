@@ -49,6 +49,9 @@ void vm_page_init(void);
 
 struct sup_page_entry * get_spe(struct hash *, void * );
 
+bool suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
+                     uint32_t read_bytes);
+
 unsigned suppl_pt_hash (const struct hash_elem *, void * UNUSED);
 bool suppl_pt_less (const struct hash_elem *, const struct hash_elem *, void * UNUSED);
 
