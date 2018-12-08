@@ -248,7 +248,7 @@ syscall_handler (struct intr_frame *f)
     break;
   }
   case SYS_MMAP:
-    f->eax = mmap (*(esp + 1), (void *) *(esp + 2));
+    f->eax = mmap ((int)(*(esp+1)), (void *) *(esp + 2));
     break;
   case SYS_MUNMAP:
     munmap (*(esp + 1));
