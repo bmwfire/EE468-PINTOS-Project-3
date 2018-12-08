@@ -12,7 +12,7 @@
 enum spe_type{
   SWAP = 1,
   FILE = 2,
-  //MMF = 3;
+  MMF = 4
 };
 
 union spe_data{
