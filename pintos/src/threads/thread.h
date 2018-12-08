@@ -115,6 +115,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* Memory Maped Files table */
+    mapid_t mapid_allocator;
+    struct hash mmfiles;
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

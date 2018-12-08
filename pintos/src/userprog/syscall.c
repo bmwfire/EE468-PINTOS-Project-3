@@ -714,9 +714,9 @@ mmap (int fd, void *addr)
      semantic.
      If success, it will return the mapid;
      otherwise, return -1 */
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   struct file* newfile = file_reopen(fd_struct->file_struct);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
   return (newfile == NULL) ? -1 : mmfiles_insert (addr, newfile, len);
 }
 

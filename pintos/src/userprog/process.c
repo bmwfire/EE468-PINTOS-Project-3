@@ -828,23 +828,19 @@ mmfiles_free_entry (struct mmfile* mmf_ptr)
   struct thread *t = thread_current ();
   struct hash_elem *he;
   int pg_cnt;
-  struct suppl_pte spte;
-  struct suppl_pte *spte_ptr;
+  struct sup_page_entry spte;
+  struct sup_page_entry *spte_ptr;
   int offset;
 
   pg_cnt = mmf_ptr->pg_cnt;
   offset = 0;
   while (pg_cnt-- > 0)
   {
-    /* Get supplemental page table entry for each page */
-    /* check whether the page is dirty */
-    /* if dirty, write back to the file*/
-    /* free the struct suppl_pte for each entry*/
     spte.uvaddr = mmf_ptr->start_addr + offset;
     he = hash_delete (&t->suppl_page_table, &spte.elem);
     if (he != NULL)
     {
-      spte_ptr = hash_entry (he, struct suppl_pte, elem);
+      spte_ptr = hash_entry (he, struct sup_page_entry, elem);
       if (spte_ptr->is_loaded
           && pagedir_is_dirty (t->pagedir, spte_ptr->uvaddr))
       {
@@ -855,16 +851,16 @@ mmfiles_free_entry (struct mmfile* mmf_ptr)
         file_write (spte_ptr->data.mmf_page.file,
                     spte_ptr->uvaddr,
                     spte_ptr->data.mmf_page.read_bytes);
-        lock_release (&fs_lock);
+        lock_release (&filesys_lock);
       }
       free (spte_ptr);
     }
     offset += PGSIZE;
   }
 
-  lock_acquire (&fs_lock);
+  lock_acquire (&filesys_lock);
   file_close (mmf_ptr->file);
-  lock_release (&fs_lock);
+  lock_release (&filesys_lock);
 
   free (mmf_ptr);
 }
