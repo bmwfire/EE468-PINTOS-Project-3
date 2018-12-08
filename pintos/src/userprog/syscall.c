@@ -24,10 +24,12 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "devices/shutdown.h"
+#include "vm/page.h"
 
 
 static void syscall_handler (struct intr_frame *);
 bool is_valid_ptr(const void *user_ptr);
+static bool is_valid_uvaddr(const void *);
 void close_all_files (struct thread *t);
 struct lock filesys_lock;
 struct file_descriptor{
@@ -37,6 +39,8 @@ struct file_descriptor{
   struct list_elem elem;
 };
 struct file_descriptor * retrieve_file(int fd);
+
+static uint32_t *esp;
 
 void
 syscall_init (void)
@@ -243,6 +247,12 @@ syscall_handler (struct intr_frame *f)
     sys_close((int)(*(esp+1)));
     break;
   }
+  case SYS_MMAP:
+    f->eax = mmap ((int)(*(esp+1)), (void *) *(esp + 2));
+    break;
+  case SYS_MUNMAP:
+    munmap (*(esp + 1));
+    break;
 
   /* unhandled case */
   default:
@@ -430,22 +440,41 @@ int sys_write(int fd, const void *buffer, unsigned size) {
   //printf("WRITE: fd = %d, size = %d\n", fd, size);
   struct file_descriptor *fd_struct;
   int bytes_written = 0;
+  unsigned buffer_size = size;
+  void *buffer_tmp = buffer;
+
+  while(buffer_tmp != NULL)
+  {
+    if(!is_valid_ptr(buffer_tmp))
+      exit(-1);
+
+    if(buffer_size > PGSIZE)
+    {
+      buffer_tmp += PGSIZE;
+      buffer_size -= PGSIZE;
+    }
+    else if(buffer_size == 0)
+      buffer_tmp = NULL;
+    else
+    {
+      buffer_tmp = buffer + size - 1;
+      buffer_size = 0;
+    }
+  }
 
   lock_acquire(&filesys_lock);
-
   if(fd == STDIN_FILENO){
-    lock_release(&filesys_lock);
-    return -1;
+    bytes_written = -1;
   }
-  if(fd == STDOUT_FILENO){
+  else if(fd == STDOUT_FILENO){
     putbuf (buffer, size);
-    lock_release(&filesys_lock);
-    return size;
-  }
-
-  fd_struct = retrieve_file(fd);
-  if(fd_struct != NULL){
-    bytes_written = file_write(fd_struct->file_struct, buffer, size);
+    bytes_written = size;
+  } else
+  {
+    fd_struct = retrieve_file(fd);
+    if(fd_struct != NULL) {
+      bytes_written = file_write(fd_struct->file_struct, buffer, size);
+    }
   }
 
   lock_release(&filesys_lock);
@@ -456,15 +485,48 @@ int sys_read(int fd, const void *buffer, unsigned size)
 {
   struct file_descriptor *fd_struct;
   int bytes_written = 0;
+  struct thread *t = thread_current();
+
+  unsigned buffer_size = size;
+  void * buffer_tmp = buffer;
+
+  while(buffer_tmp != NULL)
+  {
+    if(!is_valid_uvaddr(buffer_tmp))
+      exit(-1);
+
+    if(pagedir_get_page(t->pagedir, buffer_tmp) == NULL)
+    {
+      struct sup_page_entry *spte;
+      spte = get_spe(&t->suppl_page_table, pg_round_down(buffer_tmp));
+      if(spte != NULL & !spte->loaded)
+        load_page(spte);
+      else if(spte == NULL && buffer_tmp >= (esp - 32))
+        grow_stack(buffer_tmp);
+      else
+        exit(-1);
+    }
+
+    if(buffer_size == 0)
+      buffer_tmp = NULL;
+    else if(buffer_size > PGSIZE)
+    {
+      buffer_tmp += PGSIZE;
+      buffer_size -= PGSIZE;
+    } else
+    {
+      buffer_tmp = buffer + size - 1;
+      buffer_size = 0;
+    }
+  }
 
   lock_acquire(&filesys_lock);
 
   if(fd == STDOUT_FILENO) {
-    lock_release(&filesys_lock);
-    return -1;
+    bytes_written = -1;
   }
 
-  if(fd == STDIN_FILENO) {
+  else if(fd == STDIN_FILENO) {
     uint8_t c;
     unsigned counter = size;
     uint8_t *buf = buffer;
@@ -474,13 +536,15 @@ int sys_read(int fd, const void *buffer, unsigned size)
       counter--;
     }
     *buf = 0;
-    lock_release(&filesys_lock);
-    return (size - counter);
+    bytes_written = size - counter;
+//    lock_release(&filesys_lock);
+//    return (size - counter);
   }
-
-  fd_struct = retrieve_file(fd);
-  if(fd_struct != NULL)
-    bytes_written = file_read(fd_struct->file_struct, buffer, size);
+  else {
+    fd_struct = retrieve_file(fd);
+    if(fd_struct != NULL)
+      bytes_written = file_read(fd_struct->file_struct, buffer, size);
+  }
 
   lock_release(&filesys_lock);
   return bytes_written;
@@ -600,4 +664,67 @@ close_all_files (struct thread *t)
       list_remove (&fm->elem);
       free (fm);
     }
+}
+
+static bool is_valid_uvaddr(const void *uvaddr)
+{
+  return (uvaddr != NULL && is_user_vaddr(uvaddr));
+}
+
+mapid_t
+mmap (int fd, void *addr)
+{
+  struct file_descriptor *fd_struct;
+  int32_t len;
+  struct thread *t = thread_current ();
+  int offset;
+
+  /* Validating conditions to determine whether to reject the request */
+  if (addr == NULL || addr == 0x0 || (pg_ofs (addr) != 0))
+    return -1;
+
+  /* Bad fds*/
+  if(fd == 0 || fd == 1)
+    return -1;
+  fd_struct = retrieve_file(fd);
+  if (fd_struct == NULL)
+    return -1;
+
+  /* file length not equal to 0 */
+  len = file_length (fd_struct->file_struct);
+  if (len <= 0)
+    return -1;
+
+  /* iteratively check if there is enough space for the file starting
+   * from the uvaddr addr*/
+  offset = 0;
+  while (offset < len)
+  {
+    if (get_spe (&t->suppl_page_table, addr + offset))
+      return -1;
+
+    if (pagedir_get_page (t->pagedir, addr + offset))
+      return -1;
+
+    offset += PGSIZE;
+  }
+
+  /* Add an entry in memory mapped files table, and add entries in
+     supplemental page table iteratively which is in mmfiles_insert's
+     semantic.
+     If success, it will return the mapid;
+     otherwise, return -1 */
+  lock_acquire (&filesys_lock);
+  struct file* newfile = file_reopen(fd_struct->file_struct);
+  lock_release (&filesys_lock);
+  return (newfile == NULL) ? -1 : mmfiles_insert (addr, newfile, len);
+}
+
+void
+munmap (mapid_t mapping)
+{
+  /* Remove the entry in memory mapped files table, and remove corresponding
+     entries in supplemental page table iteratively which is in
+     mmfiles_remove()'s semantic. */
+  mmfiles_remove (mapping);
 }

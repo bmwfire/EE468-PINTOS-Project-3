@@ -166,18 +166,23 @@ page_fault (struct intr_frame *f)
     exit(-1);
   }
 
-  if (fault_addr == NULL){
-    exit (-1);
-  }
+//  if (fault_addr == NULL){
+//    exit (-1);
+//  }
+//
+//  if(!is_user_vaddr(fault_addr)){
+//    exit (-1);
+//  }
 
-  if(!is_user_vaddr(fault_addr)){
-    exit (-1);
-  }
+  if(fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+    exit(-1);
 
   spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
-  if(spe != NULL && !spe->loaded){
+  if(spe != NULL && !spe->loaded)
     load_page(spe);
-  }//NOTE this is where stack growth may need to be implemented
+  else if (spe == NULL && fault_addr >= (f->esp - 32) &&
+      (PHYS_BASE - pg_round_down(fault_addr)) <= STACK_SIZE)
+    grow_stack(fault_addr);
   else{
     if (!pagedir_get_page (curr->pagedir, fault_addr)){//check if page successfully made it the thread's page directory
 	     exit (-1);//exit if it didn't

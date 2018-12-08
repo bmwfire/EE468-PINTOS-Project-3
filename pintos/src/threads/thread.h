@@ -19,6 +19,7 @@ enum thread_status
 
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
+typedef int mapid_t;
 typedef int tid_t;
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
@@ -113,6 +114,10 @@ struct thread
     struct file *exec;                  /* File the thread is executing. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    /* Memory Maped Files table */
+    mapid_t mapid_allocator;
+    struct hash mmfiles;
 
 
 #ifdef USERPROG
