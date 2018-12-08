@@ -154,7 +154,7 @@ void grow_stack (void *uvaddr)
 
 /* Load a mmf page whose details are defined in struct suppl_pte */
 static bool
-load_page_mmf (struct suppl_pte *spte)
+load_page_mmf (struct sup_page_entry *spte)
 {
   struct thread *cur = thread_current ();
 
@@ -192,7 +192,7 @@ load_page_mmf (struct suppl_pte *spte)
 
 /* Load a zero page whose details are defined in struct suppl_pte */
 static bool
-load_page_swap (struct suppl_pte *spte)
+load_page_swap (struct sup_page_entry *spte)
 {
   /* Get a page of memory. */
   uint8_t *kpage = vm_get_frame (PAL_USER);
@@ -254,7 +254,7 @@ suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
 
 /* Given a suppl_pte struct spte, write data at address spte->uvaddr to
   * file. It is required if a page is dirty */
-void write_page_back_to_file_wo_lock (struct suppl_pte *spte)
+void write_page_back_to_file_wo_lock (struct sup_page_entry *spte)
 {
   if (spte->type == MMF)
   {
