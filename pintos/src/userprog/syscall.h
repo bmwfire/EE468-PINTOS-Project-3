@@ -16,5 +16,7 @@ unsigned sys_tell(int fd);
 void close_extra_files(int fd_num);
 void close_thread_files(tid_t tid);
 void sys_close(int fd);
+static mapid_t mmap (int, void *);
+static void munmap (mapid_t);
 
 #endif /* userprog/syscall.h */

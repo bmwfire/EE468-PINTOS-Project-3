@@ -247,6 +247,12 @@ syscall_handler (struct intr_frame *f)
     sys_close((int)(*(esp+1)));
     break;
   }
+  case SYS_MMAP:
+    f->eax = mmap (*(esp + 1), (void *) *(esp + 2));
+    break;
+  case SYS_MUNMAP:
+    munmap (*(esp + 1));
+    break;
 
   /* unhandled case */
   default:
@@ -663,4 +669,62 @@ close_all_files (struct thread *t)
 static bool is_valid_uvaddr(const void *uvaddr)
 {
   return (uvaddr != NULL && is_user_vaddr(uvaddr));
+}
+
+mapid_t
+mmap (int fd, void *addr)
+{
+  struct file_descriptor *fd_struct;
+  int32_t len;
+  struct thread *t = thread_current ();
+  int offset;
+
+  /* Validating conditions to determine whether to reject the request */
+  if (addr == NULL || addr == 0x0 || (pg_ofs (addr) != 0))
+    return -1;
+
+  /* Bad fds*/
+  if(fd == 0 || fd == 1)
+    return -1;
+  fd_struct = get_open_file (fd);
+  if (fd_struct == NULL)
+    return -1;
+
+  /* file length not equal to 0 */
+  len = file_length (fd_struct->file_struct);
+  if (len <= 0)
+    return -1;
+
+  /* iteratively check if there is enough space for the file starting
+   * from the uvaddr addr*/
+  offset = 0;
+  while (offset < len)
+  {
+    if (get_suppl_pte (&t->suppl_page_table, addr + offset))
+      return -1;
+
+    if (pagedir_get_page (t->pagedir, addr + offset))
+      return -1;
+
+    offset += PGSIZE;
+  }
+
+  /* Add an entry in memory mapped files table, and add entries in
+     supplemental page table iteratively which is in mmfiles_insert's
+     semantic.
+     If success, it will return the mapid;
+     otherwise, return -1 */
+  lock_acquire (&fs_lock);
+  struct file* newfile = file_reopen(fd_struct->file_struct);
+  lock_release (&fs_lock);
+  return (newfile == NULL) ? -1 : mmfiles_insert (addr, newfile, len);
+}
+
+void
+munmap (mapid_t mapping)
+{
+  /* Remove the entry in memory mapped files table, and remove corresponding
+     entries in supplemental page table iteratively which is in
+     mmfiles_remove()'s semantic. */
+  mmfiles_remove (mapping);
 }
