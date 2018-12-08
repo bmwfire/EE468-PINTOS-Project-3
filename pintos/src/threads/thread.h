@@ -107,7 +107,10 @@ struct thread
     struct condition child_condition;
     struct list children;               /* List of struct child_status elements */
     tid_t parent_tid;
-
+    int exit_status;                    /* Thread exit status */
+    struct thread *parent;              /* The parent thread. */
+    struct list files;                  /* File associated with the thread. */
+    struct file *exec;                  /* File the thread is executing. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
