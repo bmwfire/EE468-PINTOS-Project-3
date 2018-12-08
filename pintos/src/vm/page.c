@@ -39,10 +39,28 @@ struct sup_page_entry * get_spe(struct hash *h, void * user_vaddr){
 
 //load page NOTE this may need to be changed to account for mmf and swapping
 bool load_page(struct sup_page_entry *spe){
-  if(spe->type == FILE){
-    return load_file_page(spe);
+//  if(spe->type == FILE){
+//    return load_file_page(spe);
+//  }
+//  return false;
+  bool success = false;
+  switch (spe->type)
+  {
+  case FILE:
+    success = load_page_file (spe);
+    break;
+  case MMF:
+  case MMF | SWAP:
+    success = load_page_mmf (spe);
+    break;
+  case FILE | SWAP:
+  case SWAP:
+    success = load_page_swap (spe);
+    break;
+  default:
+    break;
   }
-  return false;
+  return success;
 }
 
 //load a page that is type file. return success
@@ -134,6 +152,78 @@ void grow_stack (void *uvaddr)
   }
 }
 
+/* Load a mmf page whose details are defined in struct suppl_pte */
+static bool
+load_page_mmf (struct suppl_pte *spte)
+{
+  struct thread *cur = thread_current ();
+
+  file_seek (spte->data.mmf_page.file, spte->data.mmf_page.offset);
+
+  /* Get a page of memory. */
+  uint8_t *kpage = vm_get_frame (PAL_USER);
+  if (kpage == NULL)
+    return false;
+
+  /* Load this page. */
+  if (file_read (spte->data.mmf_page.file, kpage,
+                 spte->data.mmf_page.read_bytes)
+      != (int) spte->data.mmf_page.read_bytes)
+  {
+    vm_free_frame (kpage);
+    return false;
+  }
+  memset (kpage + spte->data.mmf_page.read_bytes, 0,
+          PGSIZE - spte->data.mmf_page.read_bytes);
+
+  /* Add the page to the process's address space. */
+  if (!pagedir_set_page (cur->pagedir, spte->user_vaddr, kpage, true))
+  {
+    vm_free_frame (kpage);
+    return false;
+  }
+
+  spte->loaded = true;
+  if (spte->type & SWAP)
+    spte->type = MMF;
+
+  return true;
+}
+
+/* Load a zero page whose details are defined in struct suppl_pte */
+static bool
+load_page_swap (struct suppl_pte *spte)
+{
+  /* Get a page of memory. */
+  uint8_t *kpage = vm_get_frame (PAL_USER);
+  if (kpage == NULL)
+    return false;
+
+  /* Map the user page to given frame */
+  if (!pagedir_set_page (thread_current ()->pagedir, spte->user_vaddr, kpage,
+                         spte->swap_writable))
+  {
+    vm_free_frame (kpage);
+    return false;
+  }
+
+  /* Swap data from disk into memory page */
+  vm_swap_in (spte->swap_slot_idx, spte->user_vaddr);
+
+  if (spte->type == SWAP)
+  {
+    /* After swap in, remove the corresponding entry in suppl page table */
+    hash_delete (&thread_current ()->suppl_page_table, &spte->elem);
+  }
+  if (spte->type == (FILE | SWAP))
+  {
+    spte->type = FILE;
+    spte->loaded = true;
+  }
+
+  return true;
+}
+
 /* Add an file suplemental page entry to supplemental page table */
 bool
 suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
@@ -160,4 +250,17 @@ suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
     return false;
 
   return true;
+}
+
+/* Given a suppl_pte struct spte, write data at address spte->uvaddr to
+  * file. It is required if a page is dirty */
+void write_page_back_to_file_wo_lock (struct suppl_pte *spte)
+{
+  if (spte->type == MMF)
+  {
+    file_seek (spte->data.mmf_page.file, spte->data.mmf_page.offset);
+    file_write (spte->data.mmf_page.file,
+                spte->user_vaddr,
+                spte->data.mmf_page.read_bytes);
+  }
 }

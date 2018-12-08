@@ -58,5 +58,8 @@ bool suppl_pt_less (const struct hash_elem *, const struct hash_elem *, void * U
 void free_sp(struct hash *);
 bool load_page(struct sup_page_entry *);
 void grow_stack (void *);
+void write_page_back_to_file_wo_lock (struct suppl_pte *spte);
+static bool load_page_swap (struct suppl_pte *spte);
+static bool load_page_mmf (struct suppl_pte *spte);
 
 #endif
