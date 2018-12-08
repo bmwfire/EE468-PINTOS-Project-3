@@ -13,8 +13,8 @@ void vm_page_init (void);
 struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
 bool load_page(struct sup_page_entry *spe);
 bool load_file_page(struct sup_page_entry *spe);
-static bool load_page_swap (struct suppl_pte *spte);
-static bool load_page_mmf (struct suppl_pte *spte);
+static bool load_page_swap (struct sup_page_entry *spte);
+static bool load_page_mmf (struct sup_page_entry *spte);
 
 void free_sp(struct hash *spe);
 static void free_sp_entry(struct hash_elem *he, void *aux UNUSED);
