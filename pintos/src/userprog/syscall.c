@@ -40,6 +40,8 @@ struct file_descriptor{
 };
 struct file_descriptor * retrieve_file(int fd);
 
+static uint32_t *esp;
+
 void
 syscall_init (void)
 {
@@ -472,7 +474,7 @@ int sys_read(int fd, const void *buffer, unsigned size)
     {
       struct sup_page_entry *spte;
       spte = get_suppl_pte(&t->suppl_page_table, pg_round_down(buffer_tmp));
-      if(spte != NULL & !spte->is_loaded)
+      if(spte != NULL & !spte->loaded)
         load_page(spte);
       else if(spte == NULL && buffer_tmp >= (esp - 32))
         grow_stack(buffer_tmp);
