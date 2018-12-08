@@ -264,6 +264,14 @@ process_exit (void)
     cond_signal(&parent_thread->child_condition, &parent_thread->child_lock);
     lock_release(&parent_thread->child_lock);
   }
+  if (!list_empty (&cur->files))
+    close_all_files (cur);
+
+  if (cur->exec != NULL)
+    {
+      file_allow_write (cur->exec);
+      file_close (cur->exec);
+    }
 }
 
 /* Sets up the CPU for running user code in the current
@@ -478,8 +486,16 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   free(cmdline_cp);
   free(cmdline_cp_2);
+  if (success)
+    {
+      t->exec = file;
+      file_deny_write (file);
+    }
+  else
+    file_close (file);
+
   return success;
-}
+  }
 
 /* load() helpers. */
 

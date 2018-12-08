@@ -28,6 +28,7 @@
 
 static void syscall_handler (struct intr_frame *);
 bool is_valid_ptr(const void *user_ptr);
+void close_all_files (struct thread *t);
 struct lock filesys_lock;
 struct file_descriptor{
   int fd_num;
@@ -579,5 +580,24 @@ close_thread_files(tid_t tid)
         free(file_desc);
       }
       elem = temp;
+    }
+}
+void
+close_all_files (struct thread *t)
+{
+  struct list_elem *e;
+  struct file_descriptor *fm;
+
+  e = list_begin (&t->children);
+
+  while (e != list_end (&t->children))
+    {
+      fm = list_entry (e, struct file_descriptor, elem);
+      // move to the next element to stop the loop getting confused
+      e = list_next (e);
+
+      file_close (fm->file_struct);
+      list_remove (&fm->elem);
+      free (fm);
     }
 }
