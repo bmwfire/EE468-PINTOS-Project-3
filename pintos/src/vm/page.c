@@ -13,6 +13,8 @@ void vm_page_init (void);
 struct sup_page_entry * get_spe(struct hash *ht, void * user_vaddr);
 bool load_page(struct sup_page_entry *spe);
 bool load_file_page(struct sup_page_entry *spe);
+static bool load_page_swap (struct suppl_pte *spte);
+static bool load_page_mmf (struct suppl_pte *spte);
 
 void free_sp(struct hash *spe);
 static void free_sp_entry(struct hash_elem *he, void *aux UNUSED);
@@ -254,13 +256,13 @@ suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
 
 /* Given a suppl_pte struct spte, write data at address spte->uvaddr to
   * file. It is required if a page is dirty */
-void write_page_back_to_file_wo_lock (struct sup_page_entry *spte)
-{
-  if (spte->type == MMF)
-  {
-    file_seek (spte->data.mmf_page.file, spte->data.mmf_page.offset);
-    file_write (spte->data.mmf_page.file,
-                spte->user_vaddr,
-                spte->data.mmf_page.read_bytes);
-  }
-}
+//void write_page_back_to_file_wo_lock (struct sup_page_entry *spte)
+//{
+//  if (spte->type == MMF)
+//  {
+//    file_seek (spte->data.mmf_page.file, spte->data.mmf_page.offset);
+//    file_write (spte->data.mmf_page.file,
+//                spte->user_vaddr,
+//                spte->data.mmf_page.read_bytes);
+//  }
+//}
