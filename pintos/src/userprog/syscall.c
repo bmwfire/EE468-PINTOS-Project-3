@@ -24,10 +24,12 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "devices/shutdown.h"
+#include "vm/page.h"
 
 
 static void syscall_handler (struct intr_frame *);
 bool is_valid_ptr(const void *user_ptr);
+static bool is_valid_uvaddr(const void *);
 void close_all_files (struct thread *t);
 struct lock filesys_lock;
 struct file_descriptor{
@@ -456,15 +458,48 @@ int sys_read(int fd, const void *buffer, unsigned size)
 {
   struct file_descriptor *fd_struct;
   int bytes_written = 0;
+  struct thread *t = thread_current();
+
+  unsigned buffer_size = size;
+  void * buffer_tmp = buffer;
+
+  while(buffer_tmp != NULL)
+  {
+    if(!is_valid_uvaddr(buffer_tmp))
+      exit(-1);
+
+    if(pagedir_get_page(t->pagedir, buffer_tmp) == NULL)
+    {
+      struct sup_page_entry *spte;
+      spte = get_suppl_pte(&t->suppl_page_table, pg_round_down(buffer_tmp));
+      if(spte != NULL & !spte->is_loaded)
+        load_page(spte);
+      else if(spte == NULL && buffer_tmp >= (esp - 32))
+        grow_stack(buffer_tmp);
+      else
+        exit(-1);
+    }
+
+    if(buffer_size == 0)
+      buffer_tmp = NULL;
+    else if(buffer_size > PGSIZE)
+    {
+      buffer_tmp += PGSIZE;
+      buffer_size -= PGSIZE;
+    } else
+    {
+      buffer_tmp = buffer + size - 1;
+      buffer_size = 0;
+    }
+  }
 
   lock_acquire(&filesys_lock);
 
   if(fd == STDOUT_FILENO) {
-    lock_release(&filesys_lock);
-    return -1;
+    bytes_written = -1;
   }
 
-  if(fd == STDIN_FILENO) {
+  else if(fd == STDIN_FILENO) {
     uint8_t c;
     unsigned counter = size;
     uint8_t *buf = buffer;
@@ -473,14 +508,16 @@ int sys_read(int fd, const void *buffer, unsigned size)
       buffer++;
       counter--;
     }
-    *buf = 0;
-    lock_release(&filesys_lock);
-    return (size - counter);
+    bytes_written = size - counter;
+//    *buf = 0;
+//    lock_release(&filesys_lock);
+//    return (size - counter);
   }
-
-  fd_struct = retrieve_file(fd);
-  if(fd_struct != NULL)
-    bytes_written = file_read(fd_struct->file_struct, buffer, size);
+  else {
+    fd_struct = retrieve_file(fd);
+    if(fd_struct != NULL)
+      bytes_written = file_read(fd_struct->file_struct, buffer, size);
+  }
 
   lock_release(&filesys_lock);
   return bytes_written;
@@ -600,4 +637,9 @@ close_all_files (struct thread *t)
       list_remove (&fm->elem);
       free (fm);
     }
+}
+
+static bool is_valid_uvaddr(const void *uvaddr)
+{
+  return (uvaddr != NULL && is_user_vaddr(uvaddr));
 }
