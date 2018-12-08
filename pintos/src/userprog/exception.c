@@ -166,13 +166,16 @@ page_fault (struct intr_frame *f)
     exit(-1);
   }
 
-  if (fault_addr == NULL){
-    exit (-1);
-  }
+//  if (fault_addr == NULL){
+//    exit (-1);
+//  }
+//
+//  if(!is_user_vaddr(fault_addr)){
+//    exit (-1);
+//  }
 
-  if(!is_user_vaddr(fault_addr)){
-    exit (-1);
-  }
+  if(fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+    exit(-1);
 
   spe = get_spe(&curr->suppl_page_table, pg_round_down(fault_addr));//since access is valid, find a place to store the page
   if(spe != NULL && !spe->loaded)

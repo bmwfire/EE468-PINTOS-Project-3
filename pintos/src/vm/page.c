@@ -109,16 +109,6 @@ bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb, vo
   return (vsptea->user_vaddr - vspteb->user_vaddr) < 0;
 }
 
-struct sup_page_entry *get_suppl_pte(struct hash *ht, void *uvaddr)
-{
-  struct sup_page_entry spte;
-  struct hash_elem *e;
-
-  spte.user_vaddr = uvaddr;
-  e = hash_find(ht, &spte.elem);
-  return e != NULL ? hash_entry(e, struct sup_page_entry, elem) : NULL;
-}
-
 void grow_stack (void *uvaddr)
 {
   void *spage;

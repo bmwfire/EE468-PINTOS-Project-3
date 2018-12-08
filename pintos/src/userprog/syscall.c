@@ -473,7 +473,7 @@ int sys_read(int fd, const void *buffer, unsigned size)
     if(pagedir_get_page(t->pagedir, buffer_tmp) == NULL)
     {
       struct sup_page_entry *spte;
-      spte = get_suppl_pte(&t->suppl_page_table, pg_round_down(buffer_tmp));
+      spte = get_spe(&t->suppl_page_table, pg_round_down(buffer_tmp));
       if(spte != NULL & !spte->loaded)
         load_page(spte);
       else if(spte == NULL && buffer_tmp >= (esp - 32))
