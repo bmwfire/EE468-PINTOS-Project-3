@@ -23,6 +23,33 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
+struct mmfile
+{
+  mapid_t mapid;
+  struct file* file;
+  void * start_addr;
+  unsigned pg_cnt;
+  struct hash_elem elem;
+};
+
+/* Functionalities required by memory mapped files hash table */
+/* Returns a hash value. */
+unsigned mmfile_hash (const struct hash_elem *, void *);
+/* Returns true if mmfile a's mapid is less than b's */
+bool mmfile_less (const struct hash_elem *, const struct hash_elem *, void *);
+
+/* Functionalities for memory mapped files table*/
+/* free the memory mapped files table */
+void free_mmfiles (struct hash *);
+/* Helper function for free_mmfiles, used to free resources for each entry
+   represented by a hash_elem */
+static void free_mmfiles_entry (struct hash_elem *, void *);
+/* The real release of the the resources is done in this function, which
+   includes all the pages in supplemental page table */
+static void mmfiles_free_entry (struct mmfile* mmf_ptr);
+/* Allocate a new unique mapid */
+static mapid_t alloc_mapid (void);
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -710,4 +737,159 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+/* Returns a hash value. */
+unsigned
+mmfile_hash (const struct hash_elem *p_, void *aux UNUSED)
+{
+  const struct mmfile *p = hash_entry (p_, struct mmfile, elem);
+  return hash_bytes (&p->mapid, sizeof p->mapid);
+}
+
+/* Returns true if mmfile a's mapid less than b's */
+bool
+mmfile_less (const struct hash_elem *a_, const struct hash_elem *b_,
+             void *aux UNUSED)
+{
+  const struct mmfile *a = hash_entry (a_, struct mmfile, elem);
+  const struct mmfile *b = hash_entry (b_, struct mmfile, elem);
+
+  return a->mapid < b->mapid;
+}
+
+/* Add an entry in memory mapped files table, and add entries in
+   supplemental page table iteratively which is in mmfiles_insert's
+   semantic. */
+mapid_t mmfiles_insert (void *addr, struct file* file, int32_t len)
+{
+  struct thread *t = thread_current ();
+  struct mmfile *mmf;
+  struct hash_elem *result;
+  int offset;
+  int pg_cnt;
+
+  mmf = calloc (1, sizeof *mmf);
+  if (mmf == NULL)
+    return -1;
+
+  mmf->mapid = alloc_mapid ();
+  mmf->file = file;
+  mmf->start_addr = addr;
+
+  /* count how many pages we need to contain the file, and insert a
+     corresponding entry for each file page */
+  offset = 0;
+  pg_cnt = 0;
+  while (len > 0)
+  {
+    size_t read_bytes = len < PGSIZE ? len : PGSIZE;
+    if (!suppl_pt_insert_mmf (file, offset, addr, read_bytes))
+      return -1;
+
+    offset += PGSIZE;
+    len -= PGSIZE;
+    addr += PGSIZE;
+    pg_cnt++;
+  }
+
+  mmf->pg_cnt = pg_cnt;
+
+  result = hash_insert (&t->mmfiles, &mmf->elem);
+  if (result != NULL)
+    return -1;
+
+  return mmf->mapid;
+}
+
+/* Remove the entry in memory mapped files table, and remove corresponding
+   entries in supplemental page table iteratively which is in
+   mmfiles_remove()'s semantic. */
+void
+mmfiles_remove (mapid_t mapping)
+{
+  struct thread *t = thread_current ();
+  struct mmfile mmf;
+  struct mmfile *mmf_ptr;
+  struct hash_elem *he;
+
+  mmf.mapid = mapping;
+  he = hash_delete (&t->mmfiles, &mmf.elem);
+  if (he != NULL)
+  {
+    mmf_ptr = hash_entry (he, struct mmfile, elem);
+    mmfiles_free_entry (mmf_ptr);
+  }
+}
+
+static void
+mmfiles_free_entry (struct mmfile* mmf_ptr)
+{
+  struct thread *t = thread_current ();
+  struct hash_elem *he;
+  int pg_cnt;
+  struct suppl_pte spte;
+  struct suppl_pte *spte_ptr;
+  int offset;
+
+  pg_cnt = mmf_ptr->pg_cnt;
+  offset = 0;
+  while (pg_cnt-- > 0)
+  {
+    /* Get supplemental page table entry for each page */
+    /* check whether the page is dirty */
+    /* if dirty, write back to the file*/
+    /* free the struct suppl_pte for each entry*/
+    spte.uvaddr = mmf_ptr->start_addr + offset;
+    he = hash_delete (&t->suppl_page_table, &spte.elem);
+    if (he != NULL)
+    {
+      spte_ptr = hash_entry (he, struct suppl_pte, elem);
+      if (spte_ptr->is_loaded
+          && pagedir_is_dirty (t->pagedir, spte_ptr->uvaddr))
+      {
+        /* write back to disk */
+        lock_acquire (&fs_lock);
+        file_seek (spte_ptr->data.mmf_page.file,
+                   spte_ptr->data.mmf_page.ofs);
+        file_write (spte_ptr->data.mmf_page.file,
+                    spte_ptr->uvaddr,
+                    spte_ptr->data.mmf_page.read_bytes);
+        lock_release (&fs_lock);
+      }
+      free (spte_ptr);
+    }
+    offset += PGSIZE;
+  }
+
+  lock_acquire (&fs_lock);
+  file_close (mmf_ptr->file);
+  lock_release (&fs_lock);
+
+  free (mmf_ptr);
+}
+
+
+/* allocate a new unique mapid */
+static mapid_t
+alloc_mapid ()
+{
+  return thread_current ()->mapid_allocator++;
+}
+
+/* free the memory mapped files table */
+void
+free_mmfiles (struct hash *mmfiles)
+{
+  hash_destroy (mmfiles, free_mmfiles_entry);
+}
+
+/* Helper function for free_mmfiles, used to free resources for each entry
+   represented by a hash_elem */
+static void
+free_mmfiles_entry (struct hash_elem *e, void *aux UNUSED)
+{
+  struct mmfile *mmf;
+  mmf = hash_entry (e, struct mmfile, elem);
+  mmfiles_free_entry (mmf);
 }

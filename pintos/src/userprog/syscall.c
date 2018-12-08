@@ -686,7 +686,7 @@ mmap (int fd, void *addr)
   /* Bad fds*/
   if(fd == 0 || fd == 1)
     return -1;
-  fd_struct = get_open_file (fd);
+  fd_struct = retrieve_file(fd);
   if (fd_struct == NULL)
     return -1;
 
@@ -700,7 +700,7 @@ mmap (int fd, void *addr)
   offset = 0;
   while (offset < len)
   {
-    if (get_suppl_pte (&t->suppl_page_table, addr + offset))
+    if (get_spe (&t->suppl_page_table, addr + offset))
       return -1;
 
     if (pagedir_get_page (t->pagedir, addr + offset))
