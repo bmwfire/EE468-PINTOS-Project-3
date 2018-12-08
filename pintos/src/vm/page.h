@@ -15,13 +15,22 @@ enum spe_type{
   //MMF = 3;
 };
 
-struct spe_data{
-  struct file * file;
-  off_t offset; //file offset
-  uint32_t read_bytes;
-  uint32_t zero_bytes;
-  bool writable;
-  //!TODO complete this
+union spe_data{
+  struct
+  {
+    struct file * file;
+    off_t offset; //file offset
+    uint32_t read_bytes;
+    uint32_t zero_bytes;
+    bool writable;
+  } file_page;
+
+  struct
+  {
+    struct file * file;
+    off_t ofs;
+    unit32_t read_bytes;
+  } mmf_page;
 };
 
 struct sup_page_entry{

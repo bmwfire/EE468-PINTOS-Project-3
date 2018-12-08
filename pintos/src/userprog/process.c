@@ -836,16 +836,16 @@ mmfiles_free_entry (struct mmfile* mmf_ptr)
   offset = 0;
   while (pg_cnt-- > 0)
   {
-    spte.uvaddr = mmf_ptr->start_addr + offset;
+    spte.user_vaddr = mmf_ptr->start_addr + offset;
     he = hash_delete (&t->suppl_page_table, &spte.elem);
     if (he != NULL)
     {
       spte_ptr = hash_entry (he, struct sup_page_entry, elem);
-      if (spte_ptr->is_loaded
-          && pagedir_is_dirty (t->pagedir, spte_ptr->uvaddr))
+      if (spte_ptr->loaded
+          && pagedir_is_dirty (t->pagedir, spte_ptr->user_vaddr))
       {
         /* write back to disk */
-        lock_acquire (&fs_lock);
+        lock_acquire (&filesys_lock);
         file_seek (spte_ptr->data.mmf_page.file,
                    spte_ptr->data.mmf_page.ofs);
         file_write (spte_ptr->data.mmf_page.file,
