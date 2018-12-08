@@ -29,7 +29,7 @@ union spe_data{
   {
     struct file * file;
     off_t offset;
-    uit32_t read_bytes;
+    uint32_t read_bytes;
   } mmf_page;
 };
 
