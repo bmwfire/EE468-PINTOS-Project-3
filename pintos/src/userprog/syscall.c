@@ -434,22 +434,41 @@ int sys_write(int fd, const void *buffer, unsigned size) {
   //printf("WRITE: fd = %d, size = %d\n", fd, size);
   struct file_descriptor *fd_struct;
   int bytes_written = 0;
+  unsigned buffer_size = size;
+  void *buffer_tmp = buffer;
+
+  while(buffer_tmp != NULL)
+  {
+    if(!is_valid_ptr(buffer_tmp))
+      exit(-1);
+
+    if(buffer_size > PGSIZE)
+    {
+      buffer_tmp += PGSIZE;
+      buffer_size -= PGSIZE;
+    }
+    else if(buffer_size == 0)
+      buffer_tmp = NULL;
+    else
+    {
+      buffer_tmp = buffer + size - 1;
+      buffer_size = 0;
+    }
+  }
 
   lock_acquire(&filesys_lock);
-
   if(fd == STDIN_FILENO){
-    lock_release(&filesys_lock);
-    return -1;
+    bytes_written = -1;
   }
-  if(fd == STDOUT_FILENO){
+  else if(fd == STDOUT_FILENO){
     putbuf (buffer, size);
-    lock_release(&filesys_lock);
-    return size;
-  }
-
-  fd_struct = retrieve_file(fd);
-  if(fd_struct != NULL){
-    bytes_written = file_write(fd_struct->file_struct, buffer, size);
+    bytes_written = size;
+  } else
+  {
+    fd_struct = retrieve_file(fd);
+    if(fd_struct != NULL) {
+      bytes_written = file_write(fd_struct->file_struct, buffer, size);
+    }
   }
 
   lock_release(&filesys_lock);
@@ -510,8 +529,8 @@ int sys_read(int fd, const void *buffer, unsigned size)
       buffer++;
       counter--;
     }
+    *buf = 0;
     bytes_written = size - counter;
-//    *buf = 0;
 //    lock_release(&filesys_lock);
 //    return (size - counter);
   }
