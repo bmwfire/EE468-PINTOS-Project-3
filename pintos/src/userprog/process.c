@@ -845,22 +845,22 @@ mmfiles_free_entry (struct mmfile* mmf_ptr)
           && pagedir_is_dirty (t->pagedir, spte_ptr->user_vaddr))
       {
         /* write back to disk */
-        lock_acquire (&filesys_lock);
+        lock_acquire (&fs_lock);
         file_seek (spte_ptr->data.mmf_page.file,
-                   spte_ptr->data.mmf_page.ofs);
+                   spte_ptr->data.mmf_page.offset);
         file_write (spte_ptr->data.mmf_page.file,
-                    spte_ptr->uvaddr,
+                    spte_ptr->user_vaddr,
                     spte_ptr->data.mmf_page.read_bytes);
-        lock_release (&filesys_lock);
+        lock_release (&fs_lock);
       }
       free (spte_ptr);
     }
     offset += PGSIZE;
   }
 
-  lock_acquire (&filesys_lock);
+  lock_acquire (&fs_lock);
   file_close (mmf_ptr->file);
-  lock_release (&filesys_lock);
+  lock_release (&fs_lock);
 
   free (mmf_ptr);
 }
