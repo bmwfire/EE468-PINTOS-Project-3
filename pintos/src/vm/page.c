@@ -113,7 +113,7 @@ void grow_stack (void *uvaddr)
 {
   void *spage;
   struct thread *t = thread_current ();
-  spage = vm_allocate_frame (PAL_USER | PAL_ZERO);
+  spage = vm_get_frame (PAL_USER | PAL_ZERO);
   if (spage == NULL)
     return;
   else
