@@ -139,7 +139,7 @@ bool
 suppl_pt_insert_mmf (struct file *file, off_t ofs, uint8_t *upage,
                      uint32_t read_bytes)
 {
-  struct suppl_pte *spte;
+  struct sup_page_entry *spte;
   struct hash_elem *result;
   struct thread *cur = thread_current ();
 
