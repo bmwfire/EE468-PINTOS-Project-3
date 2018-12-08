@@ -2,6 +2,7 @@
 #define USERPROG_SYSCALL_H
 #include "userprog/process.h"
 
+struct lock filesys_lock;
 
 void sys_exit (int);
 void sys_halt(void);
