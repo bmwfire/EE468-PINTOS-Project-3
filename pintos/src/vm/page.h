@@ -1,6 +1,8 @@
 #ifndef VM_PAGEH
 #define VM_PAGEH
 
+#define STACK_SIZE (8 * (1 << 20))
+
 #include <stdio.h>
 #include "threads/thread.h"
 #include "threads/palloc.h"
